@@ -308,8 +308,8 @@ def write_outputs(df: pd.DataFrame, geoms: dict[str, dict], source_crs: str) -> 
         "area_reference": "2026-01-01",
         "source_geometry_crs": source_crs,
         "output_geometry_crs": "EPSG:4326",
-        "population_source": POP_URL,
-        "area_source": AREA_URL,
+        "population_source": POP_API,
+        "area_source": AREA_API,
         "geometry_source": GPKG_URL,
     }
     (DATA / "metadata.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
