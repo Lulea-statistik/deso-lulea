@@ -20,6 +20,8 @@ DATA.mkdir(exist_ok=True)
 
 POP_URL = "https://www.statistikdatabasen.scb.se/Resources/PX/bulk/ssd/sv/TAB6574_sv.zip"
 AREA_URL = "https://www.statistikdatabasen.scb.se/Resources/PX/bulk/ssd/sv/TAB6420_sv.zip"
+POP_API = "https://api.scb.se/OV0104/v1/doris/sv/ssd/START/BE/BE0101/BE0101Y/FolkmDesoAldKon"
+AREA_API = "https://api.scb.se/OV0104/v1/doris/sv/ssd/START/MI/MI0802/Areal2025"
 GPKG_URL = (
     "https://geodata.scb.se/geoserver/stat/wfs?"
     "REQUEST=GetFeature&TYPENAMES=stat%3ADeSO_2025&outputFormat=geopackage"
@@ -95,94 +97,146 @@ def pick_value_col(df: pd.DataFrame, excluded: set[str], preferred: tuple[str, .
     return best
 
 
-def population() -> pd.DataFrame:
-    df = read_bulk_zip(POP_URL)
-    c_region = find_col(df, "region")
-    c_age = find_col(df, "ålder")
-    c_sex = find_col(df, "kön")
+def api_metadata(url: str) -> dict:
+    r = requests.get(url, timeout=60)
+    r.raise_for_status()
+    return r.json()
 
-    # SCB:s bulk-CSV kan vara lång (år som kolumn) eller bred (ett värdefält per år).
-    year_cols = [c for c in df.columns if norm(c) == POP_YEAR]
-    try:
-        c_year = find_col(df, "år")
-    except KeyError:
-        c_year = None
 
-    x = df.copy()
-    x["deso"] = x[c_region].map(extract_deso)
-    x = x[
-        x["deso"].notna()
-        & x["deso"].str.startswith(MUNICIPALITY)
-        & x[c_age].map(norm).str.contains("total", na=False)
-        & x[c_sex].map(norm).str.contains("total", na=False)
-    ].copy()
+def find_variable(meta: dict, text_contains: str) -> dict:
+    needle = norm(text_contains)
+    for v in meta.get("variables", []):
+        if needle in norm(v.get("text", "")) or needle in norm(v.get("code", "")):
+            return v
+    raise KeyError(
+        f"Hittar inte variabel {text_contains!r}. "
+        f"Variabler={[(v.get('code'), v.get('text')) for v in meta.get('variables', [])]}"
+    )
 
-    if year_cols:
-        v = year_cols[0]
-    else:
-        if c_year is None:
-            raise RuntimeError(
-                "Kan inte hitta år i befolkningsfilen. "
-                f"Kolumner={list(df.columns)}"
-            )
-        x = x[x[c_year].astype(str).str.contains(POP_YEAR, na=False)].copy()
-        v = pick_value_col(x, {c_region, c_age, c_sex, c_year, "deso"}, ("antal",))
 
-    if x.empty:
+def select_value(var: dict, text_contains: str) -> str:
+    needle = norm(text_contains)
+    vals = var.get("values", [])
+    texts = var.get("valueTexts", vals)
+    for value, text in zip(vals, texts):
+        if needle in norm(text):
+            return value
+    for value in vals:
+        if needle == norm(value):
+            return value
+    raise KeyError(
+        f"Hittar inte värde {text_contains!r} i {var.get('text')}: "
+        f"{list(zip(vals, texts))[:30]}"
+    )
+
+
+def lulea_region_values(var: dict) -> list[str]:
+    vals = var.get("values", [])
+    texts = var.get("valueTexts", vals)
+    out = []
+    for value, text in zip(vals, texts):
+        code = extract_deso(value) or extract_deso(text)
+        if code and code.startswith(MUNICIPALITY):
+            out.append(value)
+    if not out:
         raise RuntimeError(
-            "Inga Luleå-DeSO efter befolkningsfilter. "
-            f"Kolumner={list(df.columns)}; "
-            f"region_exempel={df[c_region].dropna().astype(str).head(8).tolist()}; "
-            f"ålder={df[c_age].dropna().astype(str).drop_duplicates().head(8).tolist()}; "
-            f"kön={df[c_sex].dropna().astype(str).drop_duplicates().head(8).tolist()}; "
-            f"år={df[c_year].dropna().astype(str).drop_duplicates().tail(8).tolist() if c_year else year_cols}"
+            f"Inga DeSO för kommunkod {MUNICIPALITY} i API-regionvariabeln. "
+            f"Exempel={list(zip(vals, texts))[:20]}"
         )
+    return out
 
-    x["population_2025"] = numeric_series(x[v]).astype("Int64")
-    return x[["deso", "population_2025"]].drop_duplicates("deso")
+
+def query_jsonstat(url: str, selections: dict[str, list[str]]) -> dict:
+    body = {
+        "query": [
+            {"code": code, "selection": {"filter": "item", "values": values}}
+            for code, values in selections.items()
+        ],
+        "response": {"format": "json-stat2"},
+    }
+    r = requests.post(url, json=body, timeout=120)
+    r.raise_for_status()
+    return r.json()
+
+
+def region_values_from_jsonstat(js: dict, region_code: str) -> dict[str, float | None]:
+    ids = js["id"]
+    sizes = js["size"]
+    if region_code not in ids:
+        raise RuntimeError(f"Regiondimension {region_code} saknas i JSON-stat: {ids}")
+    ridx = ids.index(region_code)
+    if any(size != 1 for i, size in enumerate(sizes) if i != ridx):
+        raise RuntimeError(f"Förväntade fasta övriga dimensioner, fick id={ids}, size={sizes}")
+
+    dim = js["dimension"][region_code]
+    index = dim["category"]["index"]
+    if isinstance(index, dict):
+        ordered = [None] * len(index)
+        for key, pos in index.items():
+            ordered[pos] = key
+    else:
+        ordered = list(index)
+
+    vals = js["value"]
+    if len(vals) != len(ordered):
+        raise RuntimeError(f"Oväntad JSON-stat-längd: {len(vals)} värden för {len(ordered)} regioner")
+    return dict(zip(ordered, vals))
+
+
+def population() -> pd.DataFrame:
+    meta = api_metadata(POP_API)
+    v_region = find_variable(meta, "region")
+    v_age = find_variable(meta, "ålder")
+    v_sex = find_variable(meta, "kön")
+    v_time = find_variable(meta, "år")
+
+    regions = lulea_region_values(v_region)
+    selections = {
+        v_region["code"]: regions,
+        v_age["code"]: [select_value(v_age, "totalt")],
+        v_sex["code"]: [select_value(v_sex, "totalt")],
+        v_time["code"]: [select_value(v_time, POP_YEAR)],
+    }
+    js = query_jsonstat(POP_API, selections)
+    values = region_values_from_jsonstat(js, v_region["code"])
+
+    rows = []
+    text_by_value = dict(zip(v_region.get("values", []), v_region.get("valueTexts", [])))
+    for region_value, value in values.items():
+        code = extract_deso(region_value) or extract_deso(text_by_value.get(region_value, ""))
+        if code and code.startswith(MUNICIPALITY):
+            rows.append({"deso": code, "population_2025": value})
+    df = pd.DataFrame(rows)
+    df["population_2025"] = pd.to_numeric(df["population_2025"], errors="coerce").astype("Int64")
+    return df.drop_duplicates("deso")
 
 
 def land_area() -> pd.DataFrame:
-    df = read_bulk_zip(AREA_URL)
-    c_region = find_col(df, "region")
-    c_type = find_col(df, "arealtyp")
+    meta = api_metadata(AREA_API)
+    v_region = find_variable(meta, "region")
+    v_type = find_variable(meta, "arealtyp")
+    v_time = find_variable(meta, "år")
+    v_content = find_variable(meta, "tabellinnehåll")
 
-    year_cols = [c for c in df.columns if norm(c) == AREA_YEAR]
-    try:
-        c_year = find_col(df, "år")
-    except KeyError:
-        c_year = None
+    regions = lulea_region_values(v_region)
+    selections = {
+        v_content["code"]: [select_value(v_content, "kvadratkilometer")],
+        v_region["code"]: regions,
+        v_type["code"]: [select_value(v_type, "landareal")],
+        v_time["code"]: [select_value(v_time, AREA_YEAR)],
+    }
+    js = query_jsonstat(AREA_API, selections)
+    values = region_values_from_jsonstat(js, v_region["code"])
 
-    x = df.copy()
-    x["deso"] = x[c_region].map(extract_deso)
-    x = x[
-        x["deso"].notna()
-        & x["deso"].str.startswith(MUNICIPALITY)
-        & x[c_type].map(norm).str.contains("landareal", na=False)
-    ].copy()
-
-    if year_cols:
-        v = year_cols[0]
-    else:
-        if c_year is None:
-            raise RuntimeError(
-                "Kan inte hitta år i arealfilen. "
-                f"Kolumner={list(df.columns)}"
-            )
-        x = x[x[c_year].astype(str).str.contains(AREA_YEAR, na=False)].copy()
-        v = pick_value_col(x, {c_region, c_type, c_year, "deso"}, ("kvadratkilometer", "km"))
-
-    if x.empty:
-        raise RuntimeError(
-            "Inga Luleå-DeSO efter arealfilter. "
-            f"Kolumner={list(df.columns)}; "
-            f"region_exempel={df[c_region].dropna().astype(str).head(8).tolist()}; "
-            f"arealtyp={df[c_type].dropna().astype(str).drop_duplicates().head(12).tolist()}; "
-            f"år={df[c_year].dropna().astype(str).drop_duplicates().tail(8).tolist() if c_year else year_cols}"
-        )
-
-    x["land_area_km2_2026"] = numeric_series(x[v])
-    return x[["deso", "land_area_km2_2026"]].drop_duplicates("deso")
+    rows = []
+    text_by_value = dict(zip(v_region.get("values", []), v_region.get("valueTexts", [])))
+    for region_value, value in values.items():
+        code = extract_deso(region_value) or extract_deso(text_by_value.get(region_value, ""))
+        if code and code.startswith(MUNICIPALITY):
+            rows.append({"deso": code, "land_area_km2_2026": value})
+    df = pd.DataFrame(rows)
+    df["land_area_km2_2026"] = pd.to_numeric(df["land_area_km2_2026"], errors="coerce")
+    return df.drop_duplicates("deso")
 
 
 def find_code(props: dict) -> str | None:
