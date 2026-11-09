@@ -32,6 +32,10 @@ GPKG_URL = (
 MUNICIPALITY = "2580"
 POP_YEAR = "2025"
 AREA_YEAR = "2026"
+MUNICIPAL_POPULATION_2025 = 80304
+POPULATION_TARGET = 100000
+POPULATION_GAP = POPULATION_TARGET - MUNICIPAL_POPULATION_2025
+MUNICIPAL_POPULATION_SOURCE = "https://www.lulea.se/kommun--politik/fakta-och-statistik/befolkningsstatistik.html"
 DESO_RE = re.compile(r"\b(\d{4}[A-Z]\d{4})\b")
 
 
@@ -297,6 +301,7 @@ def write_outputs(df: pd.DataFrame, geoms: dict[str, dict], source_crs: str) -> 
             "population_2025": int(row["population_2025"]) if pd.notna(row["population_2025"]) else None,
             "land_area_km2_2026": round(float(row["land_area_km2_2026"]), 4) if pd.notna(row["land_area_km2_2026"]) else None,
             "population_per_km2": round(float(row["population_per_km2"]), 1) if pd.notna(row["population_per_km2"]) else None,
+            "target_equivalent_deso": round(float(row["target_equivalent_deso"]), 1) if pd.notna(row["target_equivalent_deso"]) else None,
         }
         features.append({"type": "Feature", "properties": props, "geometry": geoms[code]})
 
@@ -313,6 +318,10 @@ def write_outputs(df: pd.DataFrame, geoms: dict[str, dict], source_crs: str) -> 
         "population_source": POP_API,
         "area_source": AREA_API,
         "geometry_source": GPKG_URL,
+        "municipal_population_2025": MUNICIPAL_POPULATION_2025,
+        "population_target": POPULATION_TARGET,
+        "population_gap": POPULATION_GAP,
+        "municipal_population_source": MUNICIPAL_POPULATION_SOURCE,
     }
     (DATA / "metadata.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -336,7 +345,8 @@ select{padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:wh
 </style></head>
 <body><main class="wrap">
 <div class="top"><div style="flex:1"><h1>DeSO i Luleå kommun</h1>
-<div class="muted">SCB DeSO 2025 · folkmängd 2025-12-31 · landareal 2026-01-01</div></div>
+<div class="muted">SCB DeSO 2025 · folkmängd 2025-12-31 · landareal 2026-01-01</div>
+<div class="muted">Luleå 2025: 80 304 invånare · mål: 100 000 · gap: 19 696</div></div>
 <div class="card"><label for="metric">Visa </label><select id="metric">
 <option value="population_per_km2">Befolkningstäthet (inv./km²)</option>
 <option value="population_2025">Befolkning</option>
@@ -362,7 +372,8 @@ fetch('data/deso_lulea.geojson').then(r=>r.json()).then(g=>{
   layer=L.geoJSON(g,{style,onEachFeature:(f,l)=>l.bindPopup(
    '<b>'+f.properties.deso+'</b><br>Befolkning: '+fmt(f.properties.population_2025)+
    '<br>Landareal: '+fmt(f.properties.land_area_km2_2026)+' km²'+
-   '<br>Täthet: '+fmt(f.properties.population_per_km2)+' inv./km²'
+   '<br>Täthet: '+fmt(f.properties.population_per_km2)+' inv./km²'+
+   '<br><b>Behövs för 100 000:</b> '+fmt(f.properties.target_equivalent_deso)+' × detta DeSO'
   )}).addTo(map);
   map.fitBounds(layer.getBounds());
   updateLegend();
@@ -404,6 +415,7 @@ def main() -> None:
         )
 
     df["population_per_km2"] = df["population_2025"] / df["land_area_km2_2026"]
+    df["target_equivalent_deso"] = POPULATION_GAP / df["population_2025"]
     df = df.sort_values("deso")
 
     write_outputs(df, geoms, source_crs)
