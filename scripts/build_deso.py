@@ -15,7 +15,9 @@ from shapely.geometry import mapping, shape
 from shapely.ops import transform
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data"
+DOCS = ROOT / "docs"
+DATA = DOCS / "data"
+DOCS.mkdir(exist_ok=True)
 DATA.mkdir(exist_ok=True)
 
 POP_URL = "https://www.statistikdatabasen.scb.se/Resources/PX/bulk/ssd/sv/TAB6574_sv.zip"
@@ -405,7 +407,7 @@ def main() -> None:
     df = df.sort_values("deso")
 
     write_outputs(df, geoms, source_crs)
-    (ROOT / "index.html").write_text(map_html(), encoding="utf-8")
+    (DOCS / "index.html").write_text(map_html(), encoding="utf-8")
     print(
         f"Klart: {len(df)} aktuella DeSO i Luleå. "
         f"Käll-CRS: {source_crs}; karta: EPSG:4326"

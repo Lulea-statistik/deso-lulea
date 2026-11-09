@@ -27,16 +27,17 @@ jobs:
         run: python scripts/build_deso.py
       - name: Kontrollera resultat
         run: |
-          test -s data/deso_lulea.csv
-          test -s data/deso_lulea.geojson
-          test -s data/metadata.json
-          test -s index.html
-          head -5 data/deso_lulea.csv
+          test -s docs/data/deso_lulea.csv
+          test -s docs/data/deso_lulea.geojson
+          test -s docs/data/metadata.json
+          test -s docs/index.html
+          head -5 docs/data/deso_lulea.csv
       - name: Spara uppdaterade data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data index.html
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git add docs
           if git diff --cached --quiet; then
             echo "Ingen dataförändring."
           else
