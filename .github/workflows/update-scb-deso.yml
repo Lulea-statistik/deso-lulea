@@ -1,0 +1,45 @@
+name: Uppdatera SCB DeSO-data och karta
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 1 * *"
+  push:
+    paths:
+      - "scripts/build_deso.py"
+      - "requirements.txt"
+      - ".github/workflows/update-scb-deso.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Hämta SCB-data och bygg karta
+        run: python scripts/build_deso.py
+      - name: Kontrollera resultat
+        run: |
+          test -s data/deso_lulea.csv
+          test -s data/deso_lulea.geojson
+          test -s data/metadata.json
+          test -s index.html
+          head -5 data/deso_lulea.csv
+      - name: Spara uppdaterade data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data index.html
+          if git diff --cached --quiet; then
+            echo "Ingen dataförändring."
+          else
+            git commit -m "Uppdatera SCB DeSO-data"
+            git push
+          fi
