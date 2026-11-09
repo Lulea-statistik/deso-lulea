@@ -1,1 +1,43 @@
-# deso-lulea
+# DeSO – Luleå kommun
+
+Interaktiv karta och tabellunderlag för **SCB:s Demografiska statistikområden (DeSO)** inom Luleå kommun (kommunkod 2580).
+
+## Innehåll
+
+- **Befolkning per DeSO:** folkmängd 31 december 2025.
+- **Yta per DeSO:** landareal 1 januari 2026, km².
+- **Befolkning/yta:** invånare per km², beräknat som folkmängd / landareal.
+- **Karta:** interaktiv DeSO-karta med val mellan befolkning, landareal och befolkningstäthet.
+
+När arbetsflödet har körts finns:
+
+- [`data/deso_lulea.csv`](data/deso_lulea.csv)
+- [`data/deso_lulea.geojson`](data/deso_lulea.geojson)
+- [`data/metadata.json`](data/metadata.json)
+- [`index.html`](index.html) – interaktiv karta, avsedd för GitHub Pages.
+
+## Källor
+
+SCB Statistikdatabasen:
+
+- **Folkmängden per region efter ålder och kön. År 2010–2025**, tabell 000007Y7.
+- **Land- och vattenareal per den 1 januari efter region och arealtyp. År 2025–2026**, tabell 000007DY.
+- SCB öppna geodata: **DeSO 2025**.
+
+## Geodata och CRS
+
+Flödet hämtar SCB:s officiella DeSO 2025-geometri som GeoPackage och läser **källans CRS direkt ur filen**. Det filtrerar DeSO med kommunkod 2580 och transformerar därefter **hela geometrin** till **EPSG:4326** för Leaflet-kartan.
+
+Ingen transformering av enbart bounds/hörn används.
+
+SCB anger att arealberäkningen från 2025 görs ortogonalt i **SWEREF 99 TM**. Arealen i tabellen används som officiell landareal; den räknas alltså inte om från kartgeometrin.
+
+## Versionsnot
+
+SCB införde en ny version, **DeSO 2025**, under 2025. Statistik på den nya indelningen ska inte utan vidare jämföras med äldre DeSO 2018, eftersom flera områdesgränser har reviderats.
+
+Från referensår 2025 använder SCB dessutom Cell Key Method (CKM) i befolkningsstatistiken. Små slumpmässiga avvikelser kan därför förekomma och summerade delområden behöver inte exakt motsvara publicerade totaler.
+
+## Uppdatering
+
+GitHub Actions-flödet **Uppdatera SCB DeSO-data och karta** körs manuellt och månadsvis. Om SCB inte har publicerat en ny årsserie blir data oförändrade.
