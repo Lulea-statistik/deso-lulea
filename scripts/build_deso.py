@@ -100,17 +100,44 @@ def population() -> pd.DataFrame:
     c_region = find_col(df, "region")
     c_age = find_col(df, "ålder")
     c_sex = find_col(df, "kön")
-    c_year = find_col(df, "år")
 
-    x = df[
-        df[c_region].astype(str).str.contains(MUNICIPALITY, na=False)
-        & df[c_age].map(norm).eq("totalt")
-        & df[c_sex].map(norm).eq("totalt")
-        & df[c_year].astype(str).eq(POP_YEAR)
-    ].copy()
+    # SCB:s bulk-CSV kan vara lång (år som kolumn) eller bred (ett värdefält per år).
+    year_cols = [c for c in df.columns if norm(c) == POP_YEAR]
+    try:
+        c_year = find_col(df, "år")
+    except KeyError:
+        c_year = None
+
+    x = df.copy()
     x["deso"] = x[c_region].map(extract_deso)
-    x = x[x["deso"].notna() & x["deso"].str.startswith(MUNICIPALITY)]
-    v = pick_value_col(x, {c_region, c_age, c_sex, c_year, "deso"}, ("antal",))
+    x = x[
+        x["deso"].notna()
+        & x["deso"].str.startswith(MUNICIPALITY)
+        & x[c_age].map(norm).str.contains("total", na=False)
+        & x[c_sex].map(norm).str.contains("total", na=False)
+    ].copy()
+
+    if year_cols:
+        v = year_cols[0]
+    else:
+        if c_year is None:
+            raise RuntimeError(
+                "Kan inte hitta år i befolkningsfilen. "
+                f"Kolumner={list(df.columns)}"
+            )
+        x = x[x[c_year].astype(str).str.contains(POP_YEAR, na=False)].copy()
+        v = pick_value_col(x, {c_region, c_age, c_sex, c_year, "deso"}, ("antal",))
+
+    if x.empty:
+        raise RuntimeError(
+            "Inga Luleå-DeSO efter befolkningsfilter. "
+            f"Kolumner={list(df.columns)}; "
+            f"region_exempel={df[c_region].dropna().astype(str).head(8).tolist()}; "
+            f"ålder={df[c_age].dropna().astype(str).drop_duplicates().head(8).tolist()}; "
+            f"kön={df[c_sex].dropna().astype(str).drop_duplicates().head(8).tolist()}; "
+            f"år={df[c_year].dropna().astype(str).drop_duplicates().tail(8).tolist() if c_year else year_cols}"
+        )
+
     x["population_2025"] = numeric_series(x[v]).astype("Int64")
     return x[["deso", "population_2025"]].drop_duplicates("deso")
 
@@ -119,16 +146,41 @@ def land_area() -> pd.DataFrame:
     df = read_bulk_zip(AREA_URL)
     c_region = find_col(df, "region")
     c_type = find_col(df, "arealtyp")
-    c_year = find_col(df, "år")
 
-    x = df[
-        df[c_region].astype(str).str.contains(MUNICIPALITY, na=False)
-        & df[c_type].map(norm).str.contains("landareal", na=False)
-        & df[c_year].astype(str).eq(AREA_YEAR)
-    ].copy()
+    year_cols = [c for c in df.columns if norm(c) == AREA_YEAR]
+    try:
+        c_year = find_col(df, "år")
+    except KeyError:
+        c_year = None
+
+    x = df.copy()
     x["deso"] = x[c_region].map(extract_deso)
-    x = x[x["deso"].notna() & x["deso"].str.startswith(MUNICIPALITY)]
-    v = pick_value_col(x, {c_region, c_type, c_year, "deso"}, ("kvadratkilometer", "km"))
+    x = x[
+        x["deso"].notna()
+        & x["deso"].str.startswith(MUNICIPALITY)
+        & x[c_type].map(norm).str.contains("landareal", na=False)
+    ].copy()
+
+    if year_cols:
+        v = year_cols[0]
+    else:
+        if c_year is None:
+            raise RuntimeError(
+                "Kan inte hitta år i arealfilen. "
+                f"Kolumner={list(df.columns)}"
+            )
+        x = x[x[c_year].astype(str).str.contains(AREA_YEAR, na=False)].copy()
+        v = pick_value_col(x, {c_region, c_type, c_year, "deso"}, ("kvadratkilometer", "km"))
+
+    if x.empty:
+        raise RuntimeError(
+            "Inga Luleå-DeSO efter arealfilter. "
+            f"Kolumner={list(df.columns)}; "
+            f"region_exempel={df[c_region].dropna().astype(str).head(8).tolist()}; "
+            f"arealtyp={df[c_type].dropna().astype(str).drop_duplicates().head(12).tolist()}; "
+            f"år={df[c_year].dropna().astype(str).drop_duplicates().tail(8).tolist() if c_year else year_cols}"
+        )
+
     x["land_area_km2_2026"] = numeric_series(x[v])
     return x[["deso", "land_area_km2_2026"]].drop_duplicates("deso")
 
