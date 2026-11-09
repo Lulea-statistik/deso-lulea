@@ -11,10 +11,10 @@ Interaktiv karta och tabellunderlag för **SCB:s Demografiska statistikområden 
 
 När arbetsflödet har körts finns:
 
-- [`data/deso_lulea.csv`](data/deso_lulea.csv)
-- [`data/deso_lulea.geojson`](data/deso_lulea.geojson)
-- [`data/metadata.json`](data/metadata.json)
-- [`index.html`](index.html) – interaktiv karta, avsedd för GitHub Pages.
+- [`docs/data/deso_lulea.csv`](docs/data/deso_lulea.csv)
+- [`docs/data/deso_lulea.geojson`](docs/data/deso_lulea.geojson)
+- [`docs/data/metadata.json`](docs/data/metadata.json)
+- [`docs/index.html`](docs/index.html) – interaktiv karta, publicerad via GitHub Pages från `main/docs`.
 
 ## Källor
 
@@ -41,3 +41,10 @@ Från referensår 2025 använder SCB dessutom Cell Key Method (CKM) i befolkning
 ## Uppdatering
 
 GitHub Actions-flödet **Uppdatera SCB DeSO-data och karta** körs manuellt och månadsvis. Om SCB inte har publicerat en ny årsserie blir data oförändrade.
+
+
+## GitHub Pages
+
+Publiceringskälla: **branch `main`, mapp `/docs`**.
+
+Webbadress: https://lulea-statistik.github.io/deso-lulea/
