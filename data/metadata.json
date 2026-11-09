@@ -1,0 +1,11 @@
+{
+  "municipality_code": "2580",
+  "deso_version": "DeSO 2025",
+  "population_reference": "2025-12-31",
+  "area_reference": "2026-01-01",
+  "source_geometry_crs": "EPSG:3006",
+  "output_geometry_crs": "EPSG:4326",
+  "population_source": "https://www.statistikdatabasen.scb.se/Resources/PX/bulk/ssd/sv/TAB6574_sv.zip",
+  "area_source": "https://www.statistikdatabasen.scb.se/Resources/PX/bulk/ssd/sv/TAB6420_sv.zip",
+  "geometry_source": "https://geodata.scb.se/geoserver/stat/wfs?REQUEST=GetFeature&TYPENAMES=stat%3ADeSO_2025&outputFormat=geopackage&service=WFS&version=1.1.0"
+}
