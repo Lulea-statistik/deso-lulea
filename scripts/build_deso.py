@@ -302,6 +302,8 @@ def write_outputs(df: pd.DataFrame, geoms: dict[str, dict], source_crs: str) -> 
             "land_area_km2_2026": round(float(row["land_area_km2_2026"]), 4) if pd.notna(row["land_area_km2_2026"]) else None,
             "population_per_km2": round(float(row["population_per_km2"]), 1) if pd.notna(row["population_per_km2"]) else None,
             "target_equivalent_deso": round(float(row["target_equivalent_deso"]), 1) if pd.notna(row["target_equivalent_deso"]) else None,
+            "target_area_km2": round(float(row["target_area_km2"]), 2) if pd.notna(row["target_area_km2"]) else None,
+            "target_area_ha": round(float(row["target_area_ha"]), 0) if pd.notna(row["target_area_ha"]) else None,
         }
         features.append({"type": "Feature", "properties": props, "geometry": geoms[code]})
 
@@ -373,7 +375,8 @@ fetch('data/deso_lulea.geojson?v='+Date.now(), {cache:'no-store'}).then(r=>r.jso
    '<b>'+f.properties.deso+'</b><br>Befolkning: '+fmt(f.properties.population_2025)+
    '<br>Landareal: '+fmt(f.properties.land_area_km2_2026)+' km²'+
    '<br>Täthet: '+fmt(f.properties.population_per_km2)+' inv./km²'+
-   '<br><b>Behövs för 100 000:</b> '+fmt(f.properties.target_equivalent_deso)+' × detta DeSO'
+   '<br><b>Behövs för 100 000:</b> '+fmt(f.properties.target_equivalent_deso)+' × detta DeSO'+
+   '<br><b>Yta som behövs för nya stadsdelar:</b> '+fmt(f.properties.target_area_km2)+' km² ('+fmt(f.properties.target_area_ha)+' ha)'
   )}).addTo(map);
   map.fitBounds(layer.getBounds());
   updateLegend();
@@ -416,6 +419,8 @@ def main() -> None:
 
     df["population_per_km2"] = df["population_2025"] / df["land_area_km2_2026"]
     df["target_equivalent_deso"] = POPULATION_GAP / df["population_2025"]
+    df["target_area_km2"] = df["land_area_km2_2026"] * df["target_equivalent_deso"]
+    df["target_area_ha"] = df["target_area_km2"] * 100
     df = df.sort_values("deso")
 
     write_outputs(df, geoms, source_crs)
