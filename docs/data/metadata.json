@@ -7,5 +7,9 @@
   "output_geometry_crs": "EPSG:4326",
   "population_source": "https://api.scb.se/OV0104/v1/doris/sv/ssd/START/BE/BE0101/BE0101Y/FolkmDesoAldKon",
   "area_source": "https://api.scb.se/OV0104/v1/doris/sv/ssd/START/MI/MI0802/Areal2025",
-  "geometry_source": "https://geodata.scb.se/geoserver/stat/wfs?REQUEST=GetFeature&TYPENAMES=stat%3ADeSO_2025&outputFormat=geopackage&service=WFS&version=1.1.0"
+  "geometry_source": "https://geodata.scb.se/geoserver/stat/wfs?REQUEST=GetFeature&TYPENAMES=stat%3ADeSO_2025&outputFormat=geopackage&service=WFS&version=1.1.0",
+  "municipal_population_2025": 80304,
+  "population_target": 100000,
+  "population_gap": 19696,
+  "municipal_population_source": "https://www.lulea.se/kommun--politik/fakta-och-statistik/befolkningsstatistik.html"
 }

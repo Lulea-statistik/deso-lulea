@@ -16,7 +16,8 @@ select{padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:wh
 </style></head>
 <body><main class="wrap">
 <div class="top"><div style="flex:1"><h1>DeSO i Luleå kommun</h1>
-<div class="muted">SCB DeSO 2025 · folkmängd 2025-12-31 · landareal 2026-01-01</div></div>
+<div class="muted">SCB DeSO 2025 · folkmängd 2025-12-31 · landareal 2026-01-01</div>
+<div class="muted">Luleå 2025: 80 304 invånare · mål: 100 000 · gap: 19 696</div></div>
 <div class="card"><label for="metric">Visa </label><select id="metric">
 <option value="population_per_km2">Befolkningstäthet (inv./km²)</option>
 <option value="population_2025">Befolkning</option>
@@ -42,7 +43,8 @@ fetch('data/deso_lulea.geojson').then(r=>r.json()).then(g=>{
   layer=L.geoJSON(g,{style,onEachFeature:(f,l)=>l.bindPopup(
    '<b>'+f.properties.deso+'</b><br>Befolkning: '+fmt(f.properties.population_2025)+
    '<br>Landareal: '+fmt(f.properties.land_area_km2_2026)+' km²'+
-   '<br>Täthet: '+fmt(f.properties.population_per_km2)+' inv./km²'
+   '<br>Täthet: '+fmt(f.properties.population_per_km2)+' inv./km²'+
+   '<br><b>Behövs för 100 000:</b> '+fmt(f.properties.target_equivalent_deso)+' × detta DeSO'
   )}).addTo(map);
   map.fitBounds(layer.getBounds());
   updateLegend();
