@@ -7,7 +7,8 @@ Interaktiv karta och tabellunderlag för **SCB:s Demografiska statistikområden 
 - **Befolkning per DeSO:** folkmängd 31 december 2025.
 - **Yta per DeSO:** landareal 1 januari 2026, km².
 - **Befolkning/yta:** invånare per km², beräknat som folkmängd / landareal.
-- **Karta:** interaktiv DeSO-karta med val mellan befolkning, landareal och befolkningstäthet.
+- **Befolkningsmål 100 000:** Luleås officiella folkmängd 2025 är 80 304 invånare, vilket ger ett gap på 19 696. För varje DeSO beräknas `19 696 / DeSO-befolkning` för att visa hur många områden av samma befolkningsstorlek som motsvarar gapet.
+- **Karta:** interaktiv DeSO-karta med val mellan befolkning, landareal och befolkningstäthet. Popupen visar även målkvoten mot 100 000 invånare.
 
 När arbetsflödet har körts finns:
 
