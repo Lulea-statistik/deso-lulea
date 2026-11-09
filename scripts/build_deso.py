@@ -364,7 +364,7 @@ function vals(g){return g.features.map(f=>+f.properties[metric]).filter(Number.i
 function breaks(g){const a=vals(g);return [0,.2,.4,.6,.8,1].map(q=>a[Math.min(a.length-1,Math.floor(q*(a.length-1)))])}
 function color(v,b){const cs=['#eff3ff','#bdd7e7','#6baed6','#3182bd','#08519c'];for(let i=1;i<b.length;i++)if(v<=b[i])return cs[i-1];return cs[4]}
 function fmt(v){return v==null?'–':Number(v).toLocaleString('sv-SE',{maximumFractionDigits:1})}
-fetch('data/deso_lulea.geojson').then(r=>r.json()).then(g=>{
+fetch('data/deso_lulea.geojson?v='+Date.now(), {cache:'no-store'}).then(r=>r.json()).then(g=>{
  let b=breaks(g);
  function style(f){return {weight:1,color:'#555',fillOpacity:.72,fillColor:color(+f.properties[metric],b)}}
  function draw(){
