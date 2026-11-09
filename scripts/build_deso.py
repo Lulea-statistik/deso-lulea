@@ -350,6 +350,7 @@ select{padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:wh
 <div class="muted">SCB DeSO 2025 · folkmängd 2025-12-31 · landareal 2026-01-01</div>
 <div class="muted">Luleå 2025: 80 304 invånare · mål: 100 000 · gap: 19 696</div></div>
 <div class="card"><label for="metric">Visa </label><select id="metric">
+<option value="target_equivalent_deso">DeSO som behövs för att nå 100 000</option>
 <option value="population_per_km2">Befolkningstäthet (inv./km²)</option>
 <option value="population_2025">Befolkning</option>
 <option value="land_area_km2_2026">Landareal (km²)</option>
@@ -360,8 +361,8 @@ select{padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:wh
 <script>
 const map=L.map('map').setView([65.58,22.15],9);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
-let layer,metric='population_per_km2';
-const labels={population_per_km2:'inv./km²',population_2025:'invånare',land_area_km2_2026:'km²'};
+let layer,metric='target_equivalent_deso';
+const labels={target_equivalent_deso:'× DeSO',population_per_km2:'inv./km²',population_2025:'invånare',land_area_km2_2026:'km²'};
 function vals(g){return g.features.map(f=>+f.properties[metric]).filter(Number.isFinite).sort((a,b)=>a-b)}
 function breaks(g){const a=vals(g);return [0,.2,.4,.6,.8,1].map(q=>a[Math.min(a.length-1,Math.floor(q*(a.length-1)))])}
 function color(v,b){const cs=['#eff3ff','#bdd7e7','#6baed6','#3182bd','#08519c'];for(let i=1;i<b.length;i++)if(v<=b[i])return cs[i-1];return cs[4]}
