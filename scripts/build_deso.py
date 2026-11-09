@@ -376,18 +376,40 @@ fetch('data/deso_lulea.geojson').then(r=>r.json()).then(g=>{
 def main() -> None:
     pop = population()
     area = land_area()
-    df = pop.merge(area, on="deso", how="outer")
-    df["population_per_km2"] = df["population_2025"] / df["land_area_km2_2026"]
-    df = df.sort_values("deso")
     geoms, source_crs = boundaries()
 
-    missing_geom = sorted(set(df["deso"]) - set(geoms))
-    if missing_geom:
-        raise RuntimeError(f"Saknar geometri för DeSO: {missing_geom}")
+    df = pop.merge(area, on="deso", how="outer")
+    current_codes = set(geoms)
+    extra_historical = sorted(set(df["deso"]) - current_codes)
+    if extra_historical:
+        print(
+            "Ignorerar statistik-koder som inte finns i aktuell DeSO 2025-geometri: "
+            + ", ".join(extra_historical)
+        )
+
+    # Den officiella DeSO 2025-geometrin definierar den aktuella områdesmängden.
+    df = df[df["deso"].isin(current_codes)].copy()
+    missing_stats = sorted(current_codes - set(df["deso"]))
+    if missing_stats:
+        raise RuntimeError(f"Aktuell DeSO-geometri saknar statistik: {missing_stats}")
+
+    missing_population = sorted(df.loc[df["population_2025"].isna(), "deso"].tolist())
+    missing_area = sorted(df.loc[df["land_area_km2_2026"].isna(), "deso"].tolist())
+    if missing_population or missing_area:
+        raise RuntimeError(
+            f"Ofullständig statistik. Befolkning saknas={missing_population}; "
+            f"landareal saknas={missing_area}"
+        )
+
+    df["population_per_km2"] = df["population_2025"] / df["land_area_km2_2026"]
+    df = df.sort_values("deso")
 
     write_outputs(df, geoms, source_crs)
     (ROOT / "index.html").write_text(map_html(), encoding="utf-8")
-    print(f"Klart: {len(df)} DeSO i Luleå. Käll-CRS: {source_crs}; karta: EPSG:4326")
+    print(
+        f"Klart: {len(df)} aktuella DeSO i Luleå. "
+        f"Käll-CRS: {source_crs}; karta: EPSG:4326"
+    )
 
 
 if __name__ == "__main__":
