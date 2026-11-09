@@ -44,7 +44,8 @@ fetch('data/deso_lulea.geojson?v='+Date.now(), {cache:'no-store'}).then(r=>r.jso
    '<b>'+f.properties.deso+'</b><br>Befolkning: '+fmt(f.properties.population_2025)+
    '<br>Landareal: '+fmt(f.properties.land_area_km2_2026)+' km²'+
    '<br>Täthet: '+fmt(f.properties.population_per_km2)+' inv./km²'+
-   '<br><b>Behövs för 100 000:</b> '+fmt(f.properties.target_equivalent_deso)+' × detta DeSO'
+   '<br><b>Behövs för 100 000:</b> '+fmt(f.properties.target_equivalent_deso)+' × detta DeSO'+
+   '<br><b>Yta som behövs för nya stadsdelar:</b> '+fmt(f.properties.target_area_km2)+' km² ('+fmt(f.properties.target_area_ha)+' ha)'
   )}).addTo(map);
   map.fitBounds(layer.getBounds());
   updateLegend();
