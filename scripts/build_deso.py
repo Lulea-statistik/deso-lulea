@@ -208,6 +208,9 @@ def population() -> pd.DataFrame:
             rows.append({"deso": code, "population_2025": value})
     df = pd.DataFrame(rows)
     df["population_2025"] = pd.to_numeric(df["population_2025"], errors="coerce").astype("Int64")
+    # Regionvariabeln innehåller även historiska DeSO-koder. Behåll bara koder
+    # som har ett faktiskt publicerat värde för referensåret 2025.
+    df = df[df["population_2025"].notna()].copy()
     return df.drop_duplicates("deso")
 
 
@@ -236,6 +239,9 @@ def land_area() -> pd.DataFrame:
             rows.append({"deso": code, "land_area_km2_2026": value})
     df = pd.DataFrame(rows)
     df["land_area_km2_2026"] = pd.to_numeric(df["land_area_km2_2026"], errors="coerce")
+    # Regionvariabeln innehåller även historiska DeSO-koder. Behåll bara koder
+    # som har ett faktiskt publicerat arealvärde för 2026.
+    df = df[df["land_area_km2_2026"].notna()].copy()
     return df.drop_duplicates("deso")
 
 
